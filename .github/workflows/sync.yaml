@@ -12,5 +12,5 @@ jobs:
     steps:
       - run: |
           curl https://netbox.freifunk-duesseldorf.de/api/core/data-sources/${DATA_SOURCE_ID}/sync/ \
-            -X POST \
+            -X POST --fail \
             -H "Authorization: Token ${{ secrets.NETBOX_API_TOKEN }}"
