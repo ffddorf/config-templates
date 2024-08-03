@@ -13,7 +13,7 @@ set interfaces tunnel {{ intf.name }} description "{{ intf.description }}"
 
 {%- for addr in intf.ip_addresses.all() %}
 set interfaces tunnel {{ intf.name }} address {{ addr }}
-{% endfor -%}
+{%- endfor -%}
 
 set interfaces tunnel {{ intf.name }} encapsulation {{ term.tunnel.encapsulation }}
 set interfaces tunnel {{ intf.name }} multicast disable
