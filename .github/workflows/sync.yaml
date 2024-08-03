@@ -1,0 +1,16 @@
+name: Netbox Sync
+on:
+  push:
+    branches: [main]
+
+jobs:
+  trigger:
+    name: Trigger
+    runs-on: ubuntu-latest
+    env:
+      DATA_SOURCE_ID: "1"
+    steps:
+      - run: |
+          curl https://netbox.freifunk-duesseldorf.de/api/core/data-sources/${DATA_SOURCE_ID}/sync/ \
+            -X POST \
+            -H "Authorization: Token ${{ secrets.NETBOX_API_TOKEN }}"
