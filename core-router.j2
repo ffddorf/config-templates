@@ -1,0 +1,37 @@
+{# Tunnels #}
+{%- for intf in device.interfaces.filter(name__startswith='tun') %}
+
+{%- with term = intf.tunnel_terminations.first() %}
+{%- if term %}
+
+{%- with remote = term.tunnel.terminations. exclude(termination_id=intf.id).first() %}
+{%- if remote %}
+
+{%- if intf.description != '' %}
+set interfaces tunnel {{ intf.name }} description "{{ intf.description }}"
+{%- endif %}
+
+{%- for addr in intf.ip_addresses.all() %}
+set interfaces tunnel {{ intf.name }} address {{ addr }}
+{% endfor -%}
+
+set interfaces tunnel {{ intf.name }} encapsulation {{ term.tunnel.encapsulation }}
+set interfaces tunnel {{ intf.name }} multicast disable
+set interfaces tunnel {{ intf.name }} local-ip {{ term.outside_ip }}
+
+{%- with nat_outside = ipam.IPAddress.objects.filter(nat_inside_id=remote.outside_ip.id).first() %}
+set interfaces tunnel {{ intf.name }} remote-ip {% if nat_outside %}{{ nat_outside }}{% else %}{{ remote.outside_ip }}{%
+endif %}
+{%- endwith %}
+
+{%- endif %}
+{%- endwith %}
+
+{%- endif %}
+{%- endwith %}
+
+{%- endfor %}
+
+{%- for sess in netbox_bgp.BGPSession.objects.filter(device_id=device.id) %}
+set protocols bgp {{ sess.local_as.asn }} neighbor {{ sess.remote_address.address }}
+{%- endfor %}
