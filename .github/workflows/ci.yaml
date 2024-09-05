@@ -60,3 +60,4 @@ jobs:
             if (!syncResp.ok) {
               throw new Error(`Invalid HTTP response: ${syncResp.status}`)
             }
+            console.log("Sync scheduled")
