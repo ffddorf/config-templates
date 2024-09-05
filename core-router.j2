@@ -33,7 +33,7 @@ endif %}
 
 {# static interface routes #}
 {%- for intf in device.interfaces.filter(untagged_vlan__isnull=False) %}
-{%- for pfx in Prefix.objects.filter(vlan_id=intf.untagged_vlan_id) %}
+{%- for pfx in ipam.Prefix.objects.filter(vlan_id=intf.untagged_vlan_id) %}
 {%- if pfx.custom_field_data.get('use_interface_route', False) %}
 set protocols static interface-route {{ pfx.prefix }} next-hop-interface {{ intf.name }}
 {%- if pfx.description %} description {{ pfx.description }}{% endif %}
