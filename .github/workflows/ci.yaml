@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+
+jobs:
+  lint:
+    name: Lint Jinja Templates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout git repo
+        uses: actions/checkout@v4
+
+      - name: Install j2lint
+        run: pip install j2lint
+
+      - name: Run j2lint
+        run: |
+          j2lint *.j2 -w S6 --json > /tmp/lint.json || LINT_EXIT=$?
+          jq -r '(.ERRORS | map(. + { type: "error" })) + (.WARNINGS | map(. + { type: "warning" })) | .[] | "::\(.type) file=\(.filename),line=\(.line_number),title=\(.id)::\(.message)"' < /tmp/lint.json
+          exit $LINT_EXIT
+
+  sync:
+    name: Netbox Sync
+    runs-on: ubuntu-latest
+    if: github.ref_name == 'main'
+    needs: lint
+    env:
+      DATA_SOURCE_ID: "1"
+    steps:
+      - run: |
+          curl https://netbox.freifunk-duesseldorf.de/api/core/data-sources/${DATA_SOURCE_ID}/sync/ \
+            -X POST --fail \
+            -H "Authorization: Token ${{ secrets.NETBOX_API_TOKEN }}"
