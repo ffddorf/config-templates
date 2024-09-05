@@ -35,6 +35,7 @@ set interfaces tunnel {{ intf.name }} remote-ip {% if nat_outside %}{{ nat_outsi
 {%- endfor %}
 
 {# static interface routes #}
+delete protocols static interface-route
 {%- for intf in device.interfaces.filter(untagged_vlan__isnull=False) %}
 {%- for pfx in ipam.Prefix.objects.filter(vlan_id=intf.untagged_vlan_id) %}
 {%- if pfx.custom_field_data.get('use_interface_route', False) %}
