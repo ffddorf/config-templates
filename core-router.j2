@@ -31,6 +31,17 @@ endif %}
 
 {%- endfor %}
 
+{# static interface routes #}
+{%- for intf in device.interfaces.filter(untagged_vlan__isnull=False) %}
+{%- for pfx in ipam.Prefix.objects.filter(vlan_id=intf.untagged_vlan_id) %}
+{%- if pfx.custom_field_data.get('use_interface_route', False) %}
+set protocols static interface-route {{ pfx.prefix }} next-hop-interface {{ intf.name }}
+{%- if pfx.description %} description "{{ pfx.description }}"{% endif %}
+{%- endif %}
+{%- endfor %}
+{%- endfor %}
+
+{# BGP sessions #}
 {%- for sess in netbox_bgp.BGPSession.objects.filter(device_id=device.id) %}
 set protocols bgp {{ sess.local_as.asn }} neighbor {{ sess.remote_address.address }}
 {%- endfor %}
