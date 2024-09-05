@@ -31,7 +31,7 @@ jobs:
             const apiBase = "https://netbox.freifunk-duesseldorf.de/api/core/data-sources/"
             const httpOpts = {
               headers: {
-                Authorization: `Authorization: Token ${{ secrets.NETBOX_API_TOKEN }}`,
+                Authorization: "Token ${{ secrets.NETBOX_API_TOKEN }}",
               },
             }
             const repoURL = "https://github.com/${{ github.repository }}"
