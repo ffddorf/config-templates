@@ -23,8 +23,7 @@ set interfaces tunnel {{ intf.name }} multicast disable
 set interfaces tunnel {{ intf.name }} local-ip {{ term.outside_ip }}
 
 {%- with nat_outside = ipam.IPAddress.objects.filter(nat_inside_id=remote.outside_ip.id).first() %}
-set interfaces tunnel {{ intf.name }} remote-ip {% if nat_outside %}{{ nat_outside }}{% else %}{{ remote.outside_ip }}{%
-endif %}
+set interfaces tunnel {{ intf.name }} remote-ip {% if nat_outside %}{{ nat_outside }}{% else %}{{ remote.outside_ip }}{% endif %}
 {%- endwith %}
 
 {%- endif %}
@@ -38,7 +37,7 @@ endif %}
 {# static interface routes #}
 {%- for intf in device.interfaces.filter(untagged_vlan__isnull=False) %}
 {%- for pfx in ipam.Prefix.objects.filter(vlan_id=intf.untagged_vlan_id) %}
-{{- if pfx.custom_field_data.get('use_interface_route', False) %}
+{%- if pfx.custom_field_data.get('use_interface_route', False) %}
 set protocols static interface-route {{ pfx.prefix }} next-hop-interface {{ intf.name }}
 {%- if pfx.description %} description "{{ pfx.description }}"{% endif %}
 {%- endif %}
