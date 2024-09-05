@@ -15,13 +15,11 @@ jobs:
         run: pip install j2lint
 
       - name: Run j2lint
-        run: >-
-          j2lint *.j2 -w S6 --json |
-          jq -r '
-            (.ERRORS | map(. + { type: "error" })) + (.WARNINGS | map(. + { type: "warning" })) |
-            .[] |
-            "::\(.type) file=\(.filename),line=\(.line_number),title=\(.id)::\(.message)"
-          '
+        run: |
+          j2lint *.j2 -w S6 --json > /tmp/lint.json
+          LINT_EXIT=$?
+          jq -r '(.ERRORS | map(. + { type: "error" })) + (.WARNINGS | map(. + { type: "warning" })) | .[] | "::\(.type) file=\(.filename),line=\(.line_number),title=\(.id)::\(.message)"' < /tmp/lint.json
+          exit $LINT_EXIT
 
   sync:
     name: Netbox Sync
