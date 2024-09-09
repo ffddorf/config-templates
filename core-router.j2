@@ -8,7 +8,7 @@
 {%- with term = intf.tunnel_terminations.first() %}
 {%- if term %}
 
-{%- with remote = term.tunnel.terminations. exclude(termination_id=intf.id).first() %}
+{%- with remote = term.tunnel.terminations.exclude(termination_id=intf.id).first() %}
 {%- if remote %}
 
 {%- if intf.description != '' %}
