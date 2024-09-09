@@ -16,14 +16,14 @@ set interfaces tunnel {{ intf.name }} description "{{ intf.description }}"
 {%- endif %}
 
 {%- for addr in intf.ip_addresses.all() %}
-set interfaces tunnel {{ intf.name }} address {{ addr }}
+set interfaces tunnel {{ intf.name }} address {{ addr.address }}
 {%- endfor %}
 set interfaces tunnel {{ intf.name }} encapsulation {{ term.tunnel.encapsulation }}
 set interfaces tunnel {{ intf.name }} multicast disable
-set interfaces tunnel {{ intf.name }} local-ip {{ term.outside_ip }}
+set interfaces tunnel {{ intf.name }} local-ip {{ term.outside_ip.address | ipaddr('address') }}
 
-{%- with nat_outside = ipam.IPAddress.objects.filter(nat_inside_id=remote.outside_ip.id).first() %}
-set interfaces tunnel {{ intf.name }} remote-ip {% if nat_outside %}{{ nat_outside }}{% else %}{{ remote.outside_ip }}{% endif %}
+{%- with remote_ip = ipam.IPAddress.objects.filter(nat_inside_id=remote.outside_ip.id).first() or remote.outside_ip %}
+set interfaces tunnel {{ intf.name }} remote-ip {{ remote_ip.address | ipaddr('address') }}
 {%- endwith %}
 
 {%- endif %}
