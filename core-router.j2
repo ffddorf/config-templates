@@ -47,5 +47,5 @@ set protocols static interface-route {{ pfx.prefix }} next-hop-interface {{ intf
 
 {# BGP sessions #}
 {%- for sess in netbox_bgp.BGPSession.objects.filter(device_id=device.id) %}
-set protocols bgp {{ sess.local_as.asn }} neighbor {{ sess.remote_address.address }}
+set protocols bgp {{ sess.local_as.asn }} neighbor {{ sess.remote_address.address | ipaddr('address') }}
 {%- endfor %}
