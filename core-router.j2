@@ -2,6 +2,10 @@
 {# j2lint: disable=jinja-statements-indentation #}
 {# j2lint: disable=single-statement-per-line #}
 
+{% if device is not defined and device_id is defined %}
+{% set device = dcim.Device.objects.get(pk=device_id) %}
+{% endif %}
+
 {# Tunnels #}
 {%- for intf in device.interfaces.filter(name__startswith='tun') %}
 
