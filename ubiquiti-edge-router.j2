@@ -13,8 +13,17 @@
   'extra_chars': '()._',
 } %}
 
+{%- set rip_interfaces = [] %}
+{%- set ripng_interfaces = [] %}
+
 {%- for intf in device.interfaces.all() %}
 {%- set ifpath = intf.name %}
+
+{#- Analyse tags #}
+{%- for tag in intf.tags.all() %}
+{%- if tag.name == 'protocol:rip' %}{{ rip_interfaces.append(intf.name) }}{% endif %}
+{%- if tag.name == 'protocol:ripng' %}{{ ripng_interfaces.append(intf.name) }}{% endif %}
+{%- endfor %}
 
 {#- Loopback #}
 {%- if intf.name == "lo" %}{% set iftype = "loopback" %}{% endif %}
@@ -90,4 +99,12 @@ set protocols bgp {{ sess.local_as.asn }} neighbor {{ sess.remote_address.addres
 {%- if sess.peer_group %}
 set protocols bgp {{ sess.local_as.asn }} neighbor {{ sess.remote_address.address | ipaddr('address') }} peer-group {{ sess.peer_group.name }}
 {%- endif %}
+{%- endfor %}
+
+{# RIP #}
+{%- for intf in rip_interfaces %}
+set protocols rip interface {{ intf }}
+{%- endfor %}
+{%- for intf in ripng_interfaces %}
+set protocols ripng interface {{ intf }}
 {%- endfor %}
