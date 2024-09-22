@@ -41,10 +41,9 @@
 {%- endif %}
 
 {#- Tunnels #}
-{%- with term = intf.tunnel_terminations.first() %}
+{%- set term = intf.tunnel_terminations.first() %}
 {%- if term %}
-
-{%- with remote = term.tunnel.terminations.exclude(termination_id=intf.id).first() %}
+{%- set remote = term.tunnel.terminations.exclude(termination_id=intf.id).first() %}
 {%- if remote %}
 
 {%- set iftype = "tunnel" %}
@@ -57,10 +56,7 @@ set interfaces tunnel {{ intf.name }} remote-ip {{ remote_ip.address.ip }}
 {%- endwith %}
 
 {%- endif %}
-{%- endwith %}
-
 {%- endif %}
-{%- endwith %}
 
 {#- Generic interface config #}
 {%- if iftype %}
