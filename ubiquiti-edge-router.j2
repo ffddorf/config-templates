@@ -7,7 +7,7 @@
 {% endif %}
 
 {# Tunnels #}
-{%- for intf in device.interfaces.filter(name__startswith='tun') %}
+{%- for intf in device.interfaces.all() %}
 
 {%- with term = intf.tunnel_terminations.first() %}
 {%- if term %}
