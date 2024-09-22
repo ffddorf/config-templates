@@ -148,7 +148,7 @@ set protocols ripng interface {{ intf }}
 {%- endfor %}
 
 {# Policy #}
-{%- for pfxlist in prefix_list_used %}
+{%- for pfxlist in prefix_list_used | unique %}
 {%- set policytype = 'prefix-list6' if pfxlist.family == 'ipv6' else 'prefix-list' %}
 {%- if pfxlist.description != '' %}
 set policy {{ policytype }} {{ pfxlist.name }} description "{{ pfxlist.description | slugify(**description_slugifier) }}"
