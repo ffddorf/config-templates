@@ -6,23 +6,27 @@
 {% set device = dcim.Device.objects.get(pk=device_id) %}
 {% endif %}
 
-{# Tunnels #}
+{%- set ether_types = [y[0] for x in dcim.InterfaceTypeChoices.CHOICES for y in x[1] if x[0].startswith('Ethernet')] %}
+
 {%- for intf in device.interfaces.all() %}
 
+{# Loopback #}
+{%- if intf.name == "lo" %}{% set iftype = "loopback" %}{% endif %}
+
+{# Ethernet #}
+{%- if intf.type in ether_types %}
+{%- set iftype = "ethernet" %}
+{%- endif %}
+
+{# Tunnels #}
 {%- with term = intf.tunnel_terminations.first() %}
 {%- if term %}
 
 {%- with remote = term.tunnel.terminations.exclude(termination_id=intf.id).first() %}
 {%- if remote %}
 
-{%- if intf.description != '' %}
-set interfaces tunnel {{ intf.name }} description "{{ intf.description | slugify(lower=False, spaces=True,
-only_ascii=True, extra_chars='()') }}"
-{%- endif %}
+{%- set iftype = "tunnel" %}
 
-{%- for addr in intf.ip_addresses.all() %}
-set interfaces tunnel {{ intf.name }} address {{ addr.address }}
-{%- endfor %}
 set interfaces tunnel {{ intf.name }} encapsulation {{ term.tunnel.encapsulation }}
 set interfaces tunnel {{ intf.name }} multicast disable
 set interfaces tunnel {{ intf.name }} local-ip {{ term.outside_ip.address | ipaddr('address') }}
@@ -37,7 +41,18 @@ set interfaces tunnel {{ intf.name }} remote-ip {{ remote_ip.address | ipaddr('a
 {%- endif %}
 {%- endwith %}
 
+{# Generic interface config #}
+{%- if iftype %}
+{%- if intf.description != '' %}
+set interfaces {{ iftype }} {{ intf.name }} description "{{ intf.description | slugify(lower=False, spaces=True,
+only_ascii=True, extra_chars='()') }}"
+{%- endif %}
+{%- for addr in intf.ip_addresses.all() %}
+set interfaces {{ iftype }} {{ intf.name }} address {{ addr.address }}
 {%- endfor %}
+{%- endif %}
+
+{%- endfor %}{# /Interfaces #}
 
 {# static interface routes #}
 delete protocols static interface-route
