@@ -95,10 +95,22 @@ set protocols static interface-route {{ pfx.prefix }} next-hop-interface {{ intf
 
 {# BGP sessions #}
 {%- for sess in netbox_bgp.BGPSession.objects.filter(device_id=device.id) %}
-set protocols bgp {{ sess.local_as.asn }} neighbor {{ sess.remote_address.address | ipaddr('address') }} description {{ sess.description | slugify(**description_slugifier) }}
+
+{%- set neighbor = sess.remote_address.address | ipaddr('address') %}
+{%- set asn = sess.local_as.asn %}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} description {{ sess.description | slugify(**description_slugifier) }}
 {%- if sess.peer_group %}
-set protocols bgp {{ sess.local_as.asn }} neighbor {{ sess.remote_address.address | ipaddr('address') }} peer-group {{ sess.peer_group.name }}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} peer-group {{ sess.peer_group.name }}
 {%- endif %}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} update-source {{ sess.local_address.address | ipaddr('address') }}
+
+{%- if sess.local_address.address | ipaddr(version=6) %}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} no-activate
+{%- if sess.peer_group %}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} address-family ipv6-unicast peer-group {{ sess.peer_group.name }}
+{%- endif %}
+{%- endif %}
+
 {%- endfor %}
 
 {# RIP #}
