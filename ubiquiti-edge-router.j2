@@ -50,10 +50,10 @@
 {%- set iftype = "tunnel" %}
 set interfaces tunnel {{ intf.name }} encapsulation {{ term.tunnel.encapsulation }}
 set interfaces tunnel {{ intf.name }} multicast disable
-set interfaces tunnel {{ intf.name }} local-ip {{ term.outside_ip.address | ipaddr('address') }}
+set interfaces tunnel {{ intf.name }} local-ip {{ term.outside_ip.address.ip }}
 
 {%- with remote_ip = ipam.IPAddress.objects.filter(nat_inside_id=remote.outside_ip.id).first() or remote.outside_ip %}
-set interfaces tunnel {{ intf.name }} remote-ip {{ remote_ip.address | ipaddr('address') }}
+set interfaces tunnel {{ intf.name }} remote-ip {{ remote_ip.address.ip }}
 {%- endwith %}
 
 {%- endif %}
@@ -98,16 +98,16 @@ set protocols static interface-route {{ pfx.prefix }} next-hop-interface {{ intf
 {# BGP sessions #}
 {%- for sess in netbox_bgp.BGPSession.objects.filter(device_id=device.id) %}
 
-{%- set neighbor = sess.remote_address.address | ipaddr('address') %}
+{%- set neighbor = sess.remote_address.address.ip %}
 {%- set asn = sess.local_as.asn %}
-{%- set is_v6 = sess.local_address.address | ipaddr(version=6) %}
+{%- set is_v6 = sess.local_address.address.ip.version == 6 %}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} description {{ sess.description | slugify(**description_slugifier) }}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} remote-as {{ sess.remote_as.asn }}
 
 {%- if sess.peer_group %}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} peer-group {{ sess.peer_group.name }}
 {%- endif %}
-set protocols bgp {{ asn }} neighbor {{ neighbor }} update-source {{ sess.local_address.address | ipaddr('address') }}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} update-source {{ sess.local_address.address.ip }}
 
 {%- if is_v6 %}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} no-activate
