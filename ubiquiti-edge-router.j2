@@ -43,9 +43,17 @@ set interfaces tunnel {{ intf.name }} remote-ip {{ remote_ip.address | ipaddr('a
 {%- if intf.description != '' %}
 set interfaces {{ iftype }} {{ intf.name }} description "{{ intf.description | slugify(lower=False, spaces=True, only_ascii=True, extra_chars='()') }}"
 {%- endif %}
+
 {%- for addr in intf.ip_addresses.all() %}
+{%- if addr.status == 'dhcp' %}
+set interfaces {{ iftype }} {{ intf.name }} address dhcp
+{%- elif addr.status == 'slaac' %}
+set interfaces {{ iftype }} {{ intf.name }} ipv6 address autoconf
+{%- else %}
 set interfaces {{ iftype }} {{ intf.name }} address {{ addr.address }}
+{%- endif %}
 {%- endfor %}
+
 {%- endif %}
 
 {%- endfor %}{# /Interfaces #}
