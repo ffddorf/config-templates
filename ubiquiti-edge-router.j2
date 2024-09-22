@@ -21,8 +21,8 @@
 
 {#- Analyse tags #}
 {%- for tag in intf.tags.all() %}
-{%- if tag.name == 'protocol:rip' %}{{ rip_interfaces.append(intf.name) }}{% endif %}
-{%- if tag.name == 'protocol:ripng' %}{{ ripng_interfaces.append(intf.name) }}{% endif %}
+{%- if tag.name == 'protocol:rip' %}{{ rip_interfaces.append(intf.name) or "" }}{% endif %}
+{%- if tag.name == 'protocol:ripng' %}{{ ripng_interfaces.append(intf.name) or "" }}{% endif %}
 {%- endfor %}
 
 {#- Loopback #}
@@ -116,22 +116,22 @@ set protocols bgp {{ asn }} neighbor {{ neighbor }} address-family ipv6-unicast 
 {%- endif %}
 
 {%- if sess.prefix_list_in %}
-{{- prefix_list_used.append(sess.prefix_list_in) }}
+{{- prefix_list_used.append(sess.prefix_list_in) or "" }}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} address-family ipv6-unicast prefix-list import {{ sess.prefix_list_in.name }}
 {%- endif %}
 {%- if sess.prefix_list_out %}
-{{- prefix_list_used.append(sess.prefix_list_out) }}
+{{- prefix_list_used.append(sess.prefix_list_out) or "" }}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} address-family ipv6-unicast prefix-list export {{ sess.prefix_list_in.name }}
 {%- endif %}
 
 {%- else %}
 
 {%- if sess.prefix_list_in %}
-{{- prefix_list_used.append(sess.prefix_list_in) }}
+{{- prefix_list_used.append(sess.prefix_list_in) or "" }}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} prefix-list import {{ sess.prefix_list_in.name }}
 {%- endif %}
 {%- if sess.prefix_list_out %}
-{{- prefix_list_used.append(sess.prefix_list_out) }}
+{{- prefix_list_used.append(sess.prefix_list_out) or "" }}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} prefix-list export {{ sess.prefix_list_in.name }}
 {%- endif %}
 
