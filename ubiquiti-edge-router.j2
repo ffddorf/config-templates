@@ -6,6 +6,13 @@
 {% set device = dcim.Device.objects.get(pk=device_id) %}
 {% endif %}
 
+{%- set description_slugifier = {
+  'lower': False,
+  'spaces': True,
+  'only_ascii': True,
+  'extra_chars': '()._',
+} %}
+
 {%- for intf in device.interfaces.all() %}
 {%- set ifpath = intf.name %}
 
@@ -49,7 +56,7 @@ set interfaces tunnel {{ intf.name }} remote-ip {{ remote_ip.address | ipaddr('a
 {#- Generic interface config #}
 {%- if iftype %}
 {%- if intf.description != '' %}
-set interfaces {{ iftype }} {{ ifpath }} description "{{ intf.description | slugify(lower=False, spaces=True, only_ascii=True, extra_chars='()') }}"
+set interfaces {{ iftype }} {{ ifpath }} description "{{ intf.description | slugify(**description_slugifier) }}"
 {%- endif %}
 
 {%- for addr in intf.ip_addresses.all() %}
@@ -72,14 +79,14 @@ delete protocols static interface-route
 {%- for pfx in ipam.Prefix.objects.filter(vlan_id=intf.untagged_vlan_id) %}
 {%- if pfx.custom_field_data.get('use_interface_route', False) %}
 set protocols static interface-route {{ pfx.prefix }} next-hop-interface {{ intf.name }}
-{%- if pfx.description %} description "{{ pfx.description | slugify(lower=False, spaces=True, only_ascii=True, extra_chars='()') }}"{% endif %}
+{%- if pfx.description %} description "{{ pfx.description | slugify(**description_slugifier) }}"{% endif %}
 {%- endif %}
 {%- endfor %}
 {%- endfor %}
 
 {# BGP sessions #}
 {%- for sess in netbox_bgp.BGPSession.objects.filter(device_id=device.id) %}
-set protocols bgp {{ sess.local_as.asn }} neighbor {{ sess.remote_address.address | ipaddr('address') }} description {{ sess.description | slugify(lower=False, spaces=True, only_ascii=True, extra_chars='()') }}
+set protocols bgp {{ sess.local_as.asn }} neighbor {{ sess.remote_address.address | ipaddr('address') }} description {{ sess.description | slugify(**description_slugifier) }}
 {%- if sess.peer_group %}
 set protocols bgp {{ sess.local_as.asn }} neighbor {{ sess.remote_address.address | ipaddr('address') }} peer-group {{ sess.peer_group.name }}
 {%- endif %}
