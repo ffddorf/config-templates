@@ -156,7 +156,7 @@ set policy {{ policytype }} {{ pfxlist.name }} description "{{ pfxlist.descripti
 {%- for rule in pfxlist.prefrules.all() %}
 set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} description "{{ rule.description | slugify(**description_slugifier) }}"
 set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} action {{ rule.action }}
-set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} prefix {{ rule.prefix.prefix }}
+set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} prefix {{ rule.prefix.prefix if rule.prefix else rule.prefix_custom }}
 {%- if rule.ge is not none %}
 set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} ge {{ rule.ge }}
 {%- endif %}
