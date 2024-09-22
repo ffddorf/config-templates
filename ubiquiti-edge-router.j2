@@ -150,7 +150,9 @@ set protocols ripng interface {{ intf }}
 set policy {{ policytype }} {{ pfxlist.name }} description "{{ pfxlist.description | slugify(**description_slugifier) }}"
 {%- endif %}
 {%- for rule in pfxlist.prefrules.all() %}
+{%- if rule.description != '' %}
 set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} description "{{ rule.description | slugify(**description_slugifier) }}"
+{%- endif %}
 set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} action {{ rule.action }}
 set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} prefix {{ rule.prefix.prefix if rule.prefix else rule.prefix_custom }}
 {%- if rule.ge is not none %}
