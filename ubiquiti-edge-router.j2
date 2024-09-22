@@ -97,7 +97,9 @@ set protocols static interface-route {{ pfx.prefix }} next-hop-interface {{ intf
 {%- set neighbor = sess.remote_address.address.ip %}
 {%- set asn = sess.local_as.asn %}
 {%- set is_v6 = sess.local_address.address.ip.version == 6 %}
+{%- if sess.description != '' %}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} description {{ sess.description | slugify(**description_slugifier) }}
+{%- endif %}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} remote-as {{ sess.remote_as.asn }}
 
 {%- if sess.peer_group %}
