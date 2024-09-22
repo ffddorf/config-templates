@@ -8,15 +8,15 @@
 
 {%- for intf in device.interfaces.all() %}
 
-{# Loopback #}
+{#- Loopback #}
 {%- if intf.name == "lo" %}{% set iftype = "loopback" %}{% endif %}
 
-{# Ethernet #}
+{#- Ethernet #}
 {%- if intf.type not in ["virtual", "other", "bridge", "lag"] %}
 {%- set iftype = "ethernet" %}
 {%- endif %}
 
-{# Tunnels #}
+{#- Tunnels #}
 {%- with term = intf.tunnel_terminations.first() %}
 {%- if term %}
 
@@ -24,7 +24,6 @@
 {%- if remote %}
 
 {%- set iftype = "tunnel" %}
-
 set interfaces tunnel {{ intf.name }} encapsulation {{ term.tunnel.encapsulation }}
 set interfaces tunnel {{ intf.name }} multicast disable
 set interfaces tunnel {{ intf.name }} local-ip {{ term.outside_ip.address | ipaddr('address') }}
@@ -39,7 +38,7 @@ set interfaces tunnel {{ intf.name }} remote-ip {{ remote_ip.address | ipaddr('a
 {%- endif %}
 {%- endwith %}
 
-{# Generic interface config #}
+{#- Generic interface config #}
 {%- if iftype %}
 {%- if intf.description != '' %}
 set interfaces {{ iftype }} {{ intf.name }} description "{{ intf.description | slugify(lower=False, spaces=True, only_ascii=True, extra_chars='()') }}"
