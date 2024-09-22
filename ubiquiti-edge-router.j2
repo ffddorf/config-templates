@@ -6,7 +6,11 @@
 {% set device = dcim.Device.objects.get(pk=device_id) %}
 {% endif %}
 
-{%- set ether_types = [y[0] for x in dcim.InterfaceTypeChoices.CHOICES for y in x[1] if x[0].startswith('Ethernet')] %}
+{# cursed pipeline to get all possible ethernet-like type #}
+{%- set ether_types = dcim.Interface._meta.get_field("type").choices |
+  selectattr(0, "in", ["Ethernet (fixed)", "Ethernet (modular)", "Ethernet (backplane)"]) |
+  map(attribute=1) | sum(start=[]) | map(attribute=0) | list
+%}
 
 {%- for intf in device.interfaces.all() %}
 
