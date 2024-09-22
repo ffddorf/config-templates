@@ -93,22 +93,46 @@ set protocols static interface-route {{ pfx.prefix }} next-hop-interface {{ intf
 {%- endfor %}
 {%- endfor %}
 
+{%- set prefix_list_used = [] %}
+
 {# BGP sessions #}
 {%- for sess in netbox_bgp.BGPSession.objects.filter(device_id=device.id) %}
 
 {%- set neighbor = sess.remote_address.address | ipaddr('address') %}
 {%- set asn = sess.local_as.asn %}
+{%- set is_v6 = sess.local_address.address | ipaddr(version=6) %}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} description {{ sess.description | slugify(**description_slugifier) }}
 {%- if sess.peer_group %}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} peer-group {{ sess.peer_group.name }}
 {%- endif %}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} update-source {{ sess.local_address.address | ipaddr('address') }}
 
-{%- if sess.local_address.address | ipaddr(version=6) %}
+{%- if is_v6 %}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} no-activate
 {%- if sess.peer_group %}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} address-family ipv6-unicast peer-group {{ sess.peer_group.name }}
 {%- endif %}
+
+{%- if sess.prefix_list_in %}
+{{- prefix_list_used.append(sess.prefix_list_in) }}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} address-family ipv6-unicast prefix-list import {{ sess.prefix_list_in.name }}
+{%- endif %}
+{%- if sess.prefix_list_out %}
+{{- prefix_list_used.append(sess.prefix_list_out) }}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} address-family ipv6-unicast prefix-list export {{ sess.prefix_list_in.name }}
+{%- endif %}
+
+{%- else %}
+
+{%- if sess.prefix_list_in %}
+{{- prefix_list_used.append(sess.prefix_list_in) }}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} prefix-list import {{ sess.prefix_list_in.name }}
+{%- endif %}
+{%- if sess.prefix_list_out %}
+{{- prefix_list_used.append(sess.prefix_list_out) }}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} prefix-list export {{ sess.prefix_list_in.name }}
+{%- endif %}
+
 {%- endif %}
 
 {%- endfor %}
@@ -119,4 +143,23 @@ set protocols rip interface {{ intf }}
 {%- endfor %}
 {%- for intf in ripng_interfaces %}
 set protocols ripng interface {{ intf }}
+{%- endfor %}
+
+{# Policy #}
+{%- for pfxlist in prefix_list_used %}
+{%- set policytype = 'prefix-list6' if pfxlist.family == 'ipv6' else 'prefix-list' %}
+{%- if pfxlist.description != '' %}
+set policy {{ policytype }} {{ pfxlist.name }} description "{{ pfxlist.description | slugify(**description_slugifier) }}"
+{%- endif %}
+{%- for rule in pfxlist.prefrules.all() %}
+set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} description "{{ rule.description | slugify(**description_slugifier) }}"
+set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} action {{ rule.action }}
+set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} prefix {{ rule.prefix.prefix }}
+{%- if rule.ge is not none %}
+set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} ge {{ rule.ge }}
+{%- endif %}
+{%- if rule.le is not none %}
+set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} ge {{ rule.le }}
+{%- endif %}
+{%- endfor %}
 {%- endfor %}
