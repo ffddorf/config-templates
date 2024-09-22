@@ -102,6 +102,8 @@ set protocols static interface-route {{ pfx.prefix }} next-hop-interface {{ intf
 {%- set asn = sess.local_as.asn %}
 {%- set is_v6 = sess.local_address.address | ipaddr(version=6) %}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} description {{ sess.description | slugify(**description_slugifier) }}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} remote-as {{ sess.remote_as.asn }}
+
 {%- if sess.peer_group %}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} peer-group {{ sess.peer_group.name }}
 {%- endif %}
