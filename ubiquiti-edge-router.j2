@@ -6,38 +6,77 @@
 {% set device = dcim.Device.objects.get(pk=device_id) %}
 {% endif %}
 
-{# Tunnels #}
-{%- for intf in device.interfaces.filter(name__startswith='tun') %}
+{%- set description_slugifier = {
+  'lower': False,
+  'spaces': True,
+  'only_ascii': True,
+  'extra_chars': '()._',
+} %}
 
-{%- with term = intf.tunnel_terminations.first() %}
+{%- set rip_interfaces = [] %}
+{%- set ripng_interfaces = [] %}
+
+{%- for intf in device.interfaces.all() %}
+{%- set ifpath = intf.name %}
+
+{#- Analyse tags #}
+{%- for tag in intf.tags.all() %}
+{%- if tag.name == 'protocol:rip' %}{{ rip_interfaces.append(intf.name) or "" }}{% endif %}
+{%- if tag.name == 'protocol:ripng' %}{{ ripng_interfaces.append(intf.name) or "" }}{% endif %}
+{%- endfor %}
+
+{#- Loopback #}
+{%- if intf.name == "lo" %}{% set iftype = "loopback" %}{% endif %}
+
+{#- Ethernet #}
+{%- if intf.type not in ["virtual", "other", "bridge", "lag"] %}
+{%- set iftype = "ethernet" %}
+{%- endif %}
+
+{#- VLANs #}
+{%- if intf.type == 'virtual' and intf.parent and intf.mode == 'access' and intf.untagged_vlan is not none %}
+{%- if intf.parent.type not in ["virtual", "other", "bridge", "lag"] %}{% set iftype = "ethernet" %}{% endif %}
+{#- TODO: add other iftypes #}
+{%- set ifpath = "%s vif %d" % (intf.parent.name, intf.untagged_vlan.vid) %}
+{%- endif %}
+
+{#- Tunnels #}
+{%- set term = intf.tunnel_terminations.first() %}
 {%- if term %}
-
-{%- with remote = term.tunnel.terminations.exclude(termination_id=intf.id).first() %}
+{%- set remote = term.tunnel.terminations.exclude(termination_id=intf.id).first() %}
 {%- if remote %}
 
+{%- set iftype = "tunnel" %}
+set interfaces tunnel {{ intf.name }} encapsulation {{ term.tunnel.encapsulation }}
+set interfaces tunnel {{ intf.name }} multicast disable
+set interfaces tunnel {{ intf.name }} local-ip {{ term.outside_ip.address.ip }}
+
+{%- with remote_ip = ipam.IPAddress.objects.filter(nat_inside_id=remote.outside_ip.id).first() or remote.outside_ip %}
+set interfaces tunnel {{ intf.name }} remote-ip {{ remote_ip.address.ip }}
+{%- endwith %}
+
+{%- endif %}
+{%- endif %}
+
+{#- Generic interface config #}
+{%- if iftype %}
 {%- if intf.description != '' %}
-set interfaces tunnel {{ intf.name }} description "{{ intf.description | slugify(lower=False, spaces=True,
-only_ascii=True, extra_chars='()') }}"
+set interfaces {{ iftype }} {{ ifpath }} description "{{ intf.description | slugify(**description_slugifier) }}"
 {%- endif %}
 
 {%- for addr in intf.ip_addresses.all() %}
-set interfaces tunnel {{ intf.name }} address {{ addr.address }}
+{%- if addr.status == 'dhcp' %}
+set interfaces {{ iftype }} {{ ifpath }} address dhcp
+{%- elif addr.status == 'slaac' %}
+set interfaces {{ iftype }} {{ ifpath }} ipv6 address autoconf
+{%- else %}
+set interfaces {{ iftype }} {{ ifpath }} address {{ addr.address }}
+{%- endif %}
 {%- endfor %}
-set interfaces tunnel {{ intf.name }} encapsulation {{ term.tunnel.encapsulation }}
-set interfaces tunnel {{ intf.name }} multicast disable
-set interfaces tunnel {{ intf.name }} local-ip {{ term.outside_ip.address | ipaddr('address') }}
-
-{%- with remote_ip = ipam.IPAddress.objects.filter(nat_inside_id=remote.outside_ip.id).first() or remote.outside_ip %}
-set interfaces tunnel {{ intf.name }} remote-ip {{ remote_ip.address | ipaddr('address') }}
-{%- endwith %}
 
 {%- endif %}
-{%- endwith %}
 
-{%- endif %}
-{%- endwith %}
-
-{%- endfor %}
+{%- endfor %}{# /Interfaces #}
 
 {# static interface routes #}
 delete protocols static interface-route
@@ -45,18 +84,84 @@ delete protocols static interface-route
 {%- for pfx in ipam.Prefix.objects.filter(vlan_id=intf.untagged_vlan_id) %}
 {%- if pfx.custom_field_data.get('use_interface_route', False) %}
 set protocols static interface-route {{ pfx.prefix }} next-hop-interface {{ intf.name }}
-{%- if pfx.description %} description "{{ pfx.description | slugify(lower=False, spaces=True, only_ascii=True,
-extra_chars='()') }}"{% endif %}
+{%- if pfx.description %} description "{{ pfx.description | slugify(**description_slugifier) }}"{% endif %}
 {%- endif %}
 {%- endfor %}
 {%- endfor %}
 
+{%- set prefix_list_used = [] %}
+
 {# BGP sessions #}
 {%- for sess in netbox_bgp.BGPSession.objects.filter(device_id=device.id) %}
-set protocols bgp {{ sess.local_as.asn }} neighbor {{ sess.remote_address.address | ipaddr('address') }} description {{
-sess.description | slugify(lower=False, spaces=True, only_ascii=True, extra_chars='()') }}
-{%- if sess.peer_group %}
-set protocols bgp {{ sess.local_as.asn }} neighbor {{ sess.remote_address.address | ipaddr('address') }} peer-group {{
-sess.peer_group.name }}
+
+{%- set neighbor = sess.remote_address.address.ip %}
+{%- set asn = sess.local_as.asn %}
+{%- set is_v6 = sess.local_address.address.ip.version == 6 %}
+{%- if sess.description != '' %}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} description {{ sess.description | slugify(**description_slugifier) }}
 {%- endif %}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} remote-as {{ sess.remote_as.asn }}
+
+{%- if sess.peer_group %}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} peer-group {{ sess.peer_group.name }}
+{%- endif %}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} update-source {{ sess.local_address.address.ip }}
+
+{%- if is_v6 %}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} no-activate
+{%- if sess.peer_group %}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} address-family ipv6-unicast peer-group {{ sess.peer_group.name }}
+{%- endif %}
+
+{%- if sess.prefix_list_in %}
+{{- prefix_list_used.append(sess.prefix_list_in) or "" }}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} address-family ipv6-unicast prefix-list import {{ sess.prefix_list_in.name }}
+{%- endif %}
+{%- if sess.prefix_list_out %}
+{{- prefix_list_used.append(sess.prefix_list_out) or "" }}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} address-family ipv6-unicast prefix-list export {{ sess.prefix_list_in.name }}
+{%- endif %}
+
+{%- else %}
+
+{%- if sess.prefix_list_in %}
+{{- prefix_list_used.append(sess.prefix_list_in) or "" }}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} prefix-list import {{ sess.prefix_list_in.name }}
+{%- endif %}
+{%- if sess.prefix_list_out %}
+{{- prefix_list_used.append(sess.prefix_list_out) or "" }}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} prefix-list export {{ sess.prefix_list_in.name }}
+{%- endif %}
+
+{%- endif %}
+
+{%- endfor %}
+
+{# RIP #}
+{%- for intf in rip_interfaces %}
+set protocols rip interface {{ intf }}
+{%- endfor %}
+{%- for intf in ripng_interfaces %}
+set protocols ripng interface {{ intf }}
+{%- endfor %}
+
+{# Policy #}
+{%- for pfxlist in prefix_list_used | unique %}
+{%- set policytype = 'prefix-list6' if pfxlist.family == 'ipv6' else 'prefix-list' %}
+{%- if pfxlist.description != '' %}
+set policy {{ policytype }} {{ pfxlist.name }} description "{{ pfxlist.description | slugify(**description_slugifier) }}"
+{%- endif %}
+{%- for rule in pfxlist.prefrules.all() %}
+{%- if rule.description != '' %}
+set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} description "{{ rule.description | slugify(**description_slugifier) }}"
+{%- endif %}
+set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} action {{ rule.action }}
+set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} prefix {{ rule.prefix.prefix if rule.prefix else rule.prefix_custom }}
+{%- if rule.ge is not none %}
+set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} ge {{ rule.ge }}
+{%- endif %}
+{%- if rule.le is not none %}
+set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} ge {{ rule.le }}
+{%- endif %}
+{%- endfor %}
 {%- endfor %}
