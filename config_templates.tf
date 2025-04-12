@@ -14,5 +14,5 @@ resource "netbox_config_template" "templates" {
   for_each = local.templates
 
   name          = try(regex("{# ?name: ?([^#]+?) ?#}", each.value)[0], each.key)
-  template_code = each.value
+  template_code = trimspace(each.value)
 }
