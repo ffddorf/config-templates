@@ -1,0 +1,9 @@
+_assignment:
+  roles: [Router]
+  sites: [dus2]
+
+offloading:
+  forwarding: true
+  gre: true
+  vlan: true
+  table-size: 4194304

@@ -1,0 +1,12 @@
+_assignment:
+  roles: [Router]
+
+syslog:
+  targets:
+    global:
+      facilities:
+        all: info
+        protocols: debug
+    host://syslog.freifunk-duesseldorf.de:
+      facilities:
+        all: info

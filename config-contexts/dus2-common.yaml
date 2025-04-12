@@ -1,0 +1,32 @@
+_assignment:
+  roles: [Router]
+  sites: [dus2]
+
+lldp:
+  enabled: true
+snmp:
+  enabled: true
+  bind-lo: true
+unms:
+  enabled: true # takes string from secret
+conntrack:
+  expect-table-size: 2048
+  table-size: 262144
+  hash-size: 32768
+banner: "Now entering Freifunk DUS2. Have a lot of fun!\n"
+dns-client:
+  servers:
+    - 8.8.8.8
+    - 8.8.4.4
+    - "2001:4860:4860::8888"
+    - "2001:4860:4860::8844"
+    - 1.1.1.1
+    - 1.0.0.1
+    - "2606:4700:4700::1111"
+    - "2606:4700:4700::1001"
+ntp-client:
+  servers:
+    - time1.google.com
+    - time2.google.com
+    - time3.google.com
+    - time4.google.com
