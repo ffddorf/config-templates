@@ -79,8 +79,8 @@ set interfaces {{ iftype }} {{ ifpath }} address {{ addr.address }}
 {%- endif %}
 {%- endfor %}
 
-set interfaces {{ iftype }} {{ ifpath }} duplex auto
-set interfaces {{ iftype }} {{ ifpath }} speed auto
+set interfaces {{ iftype }} {{ ifpath }} duplex {{ intf.duplex | default("auto", true) }}
+set interfaces {{ iftype }} {{ ifpath }} speed {% if intf.speed %}{{ (intf.speed / 1000) | int }}{% else %}auto{% endif %}
 
 {%- endif %}
 
