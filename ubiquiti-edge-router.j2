@@ -60,6 +60,11 @@ set interfaces tunnel {{ intf.name }} remote-ip {{ remote_ip.address.ip }}
 
 {#- Generic interface config #}
 {%- if iftype %}
+
+{%- if not intf.enabled %}
+set interfaces {{ iftype }} {{ ifpath }} disable
+{%- endif %}
+
 {%- if intf.description != '' %}
 set interfaces {{ iftype }} {{ ifpath }} description "{{ intf.description | slugify(**description_slugifier) }}"
 {%- endif %}
@@ -73,6 +78,9 @@ set interfaces {{ iftype }} {{ ifpath }} ipv6 address autoconf
 set interfaces {{ iftype }} {{ ifpath }} address {{ addr.address }}
 {%- endif %}
 {%- endfor %}
+
+set interfaces {{ iftype }} {{ ifpath }} duplex {{ intf.duplex | default("auto", true) }}
+set interfaces {{ iftype }} {{ ifpath }} speed {% if intf.speed %}{{ (intf.speed / 1000) | int }}{% else %}auto{% endif %}
 
 {%- endif %}
 
