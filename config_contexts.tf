@@ -30,7 +30,10 @@ resource "netbox_config_context" "ctx" {
   for_each = local.contexts
 
   name = trimsuffix(each.key, ".yaml")
-  data = jsonencode(each.value)
+  data = jsonencode({
+    for k, v in each.value :
+    k => v if k != "_assignment"
+  })
 
   sites = try([
     for site_slug in each.value._assignment.sites :
