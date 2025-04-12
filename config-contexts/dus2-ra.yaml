@@ -1,0 +1,6 @@
+_assignment:
+  roles: [Router]
+  sites: [dus2]
+
+router-advertisements:
+  nameserver: 2001:678:b7c::1

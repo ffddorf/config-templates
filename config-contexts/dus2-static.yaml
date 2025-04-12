@@ -1,0 +1,26 @@
+_assignment:
+  roles: [Router]
+  sites: [dus2]
+
+static-routes:
+  - prefix: 10.0.0.0/8
+    blackhole: true
+    distance: 250
+  - prefix: 45.151.166.0/24
+    blackhole: true
+    distance: 250
+  - prefix: 45.151.166.21/32
+    next-hop: 10.1.1.109
+    description: k3s
+  - prefix: 45.151.166.25/32
+    next-hop: 10.1.1.251
+    description: stun
+  - prefix: 45.151.166.26/32
+    next-hop: 10.1.1.248
+    description: dns
+  - prefix: 45.151.166.28/32
+    next-hop: 10.1.1.208
+    description: neuss01
+  - prefix: 45.151.166.36/32
+    next-hop: 10.5.0.21
+    description: experiment1

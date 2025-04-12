@@ -1,0 +1,7 @@
+_assignment:
+  roles: [Router]
+
+users:
+  ubnt:
+    public-keys:
+      marcus2025: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDtrlD92PUcw1SmnmTIy2/YpfVFlm5b6Crnd0rM6bdzc
