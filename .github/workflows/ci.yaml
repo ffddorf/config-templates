@@ -16,48 +16,6 @@ jobs:
 
       - name: Run j2lint
         run: |
-          j2lint *.j2 -w S6 --json > /tmp/lint.json || LINT_EXIT=$?
+          j2lint templates/*.j2 -w S6 --json > /tmp/lint.json || LINT_EXIT=$?
           jq -r '(.ERRORS | map(. + { type: "error" })) + (.WARNINGS | map(. + { type: "warning" })) | .[] | "::\(.type) file=\(.filename),line=\(.line_number),title=\(.id)::\(.message)"' < /tmp/lint.json
           exit $LINT_EXIT
-
-  sync:
-    name: Netbox Sync
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - uses: actions/github-script@v7
-        with:
-          script: |
-            const apiBase = "https://netbox.freifunk-duesseldorf.de/api/core/data-sources/"
-            const httpOpts = {
-              headers: {
-                Authorization: "Token ${{ secrets.NETBOX_API_TOKEN }}",
-              },
-            }
-            const repoURL = "https://github.com/${{ github.repository }}"
-
-            // find datasource matching branch
-            const dataSourceResp = await fetch(`${apiBase}?source_url=${encodeURIComponent(repoURL)}`, httpOpts)
-            if (!dataSourceResp.ok) {
-              throw new Error(`Invalid HTTP response: ${dataSourceResp.status}`)
-            }
-            const { results: dataSources, count } = await dataSourceResp.json()
-
-            let expectedBranch = "${{ github.ref_name }}"
-            if ("${{ github.event.repository.default_branch }}" == expectedBranch) {
-              expectedBranch = ""
-            }
-            const dataSource = dataSources.find(s => s.parameters.branch == expectedBranch)
-            if (!dataSource) {
-              if (expectedBranch == "") {
-                throw new Error("Data Source to sync not found")
-              }
-              console.warn("Couldn't find data source to sync. Ignoring since not on default branch.")
-              return
-            }
-
-            const syncResp = await fetch(`${dataSource.url}/sync/`, { ...httpOpts, method: "POST" })
-            if (!syncResp.ok) {
-              throw new Error(`Invalid HTTP response: ${syncResp.status}`)
-            }
-            console.log("Sync scheduled")
