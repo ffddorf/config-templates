@@ -36,26 +36,48 @@
   {#- Determine interface type #}
   {%- if intf.name == "lo" %}
     {#- Loopback #}
-    {%- set if_entry = { 'intf': intf, 'conftype': "loopback", 'confpath': intf.name } %}
+    {%- set if_entry = {
+      'intf': intf,
+      'conftype': "loopback",
+      'confpath': intf.name,
+      'sortpath': intf.name,
+    } %}
     {#- #}
   {%- elif tunnel_term and tunnel_remote %}
     {#- Tunnel #}
-    {%- set if_entry = { 'intf': intf, 'conftype': "tunnel", 'confpath': intf.name, 'term': tunnel_term, 'remote': tunnel_remote } %}
+    {%- set if_entry = {
+      'intf': intf,
+      'conftype': "tunnel",
+      'confpath': intf.name,
+      'sortpath': intf.name,
+      'term': tunnel_term,
+      'remote': tunnel_remote,
+    } %}
     {#- #}
   {%- elif intf.type not in ["virtual", "other", "bridge", "lag"] %}
     {#- Ethernet #}
     {#- Add VLANs #}
     {%- for vlan in device.interfaces.filter(parent=intf,type='virtual',mode='access',untagged_vlan__isnull=False).all() %}
-      {{- interfaces.append({ 'intf': vlan, 'conftype': "ethernet", 'confpath': '%s vif %d' % (intf.name,vlan.untagged_vlan.vid) }) or "" }}
+      {{- interfaces.append({
+        'intf': vlan,
+        'conftype': "ethernet",
+        'confpath': '%s vif %d' % (intf.name,vlan.untagged_vlan.vid),
+        'sortpath': '%s-vif-%3d' % (intf.name,vlan.untagged_vlan.vid),
+      }) or "" }}
     {%- endfor %}
-    {%- set if_entry = { 'intf': intf, 'conftype': "ethernet", 'confpath': intf.name } %}
+    {%- set if_entry = {
+      'intf': intf,
+      'conftype': "ethernet",
+      'confpath': intf.name,
+      'sortpath': intf.name,
+    } %}
   {#- #}
   {%- endif %}{# /interface type #}
   {%- if if_entry %}{{- interfaces.append(if_entry) or "" }}{% endif %}
 {%- endfor %}{# /interface prep #}
 {#- #}
 {#- Loop over interfaces #}
-{%- for entry in interfaces | sort(attribute='conftype,confpath') %}
+{%- for entry in interfaces | sort(attribute='conftype,sortpath') %}
 {%- set intf = entry.intf %}
 {%- set iftype = entry.conftype %}
 {%- set ifpath = entry.confpath %}
