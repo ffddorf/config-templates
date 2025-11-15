@@ -142,7 +142,7 @@ set protocols static interface-route {{ pfx.prefix }} next-hop-interface {{ intf
 
 # BGP sessions
 delete protocols bgp
-{%- for sess in netbox_bgp.BGPSession.objects.filter(device_id=device.id) %}
+{%- for sess in netbox_bgp.BGPSession.objects.filter(device_id=device.id).order_by('remote_address') %}
 {#- #}
 {%- set is_v6 = sess.local_address.address.ip.version == 6 %}
 {%- set neighbor = sess.remote_address.address.ip %}
