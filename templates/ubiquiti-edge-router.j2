@@ -4,9 +4,9 @@
 {#- j2lint: disable=jinja-statements-indentation #}
 {#- j2lint: disable=single-statement-per-line #}
 {#- #}
-{% if device is not defined and device_id is defined %}
-{% set device = dcim.Device.objects.get(pk=device_id) %}
-{% endif %}
+{%- if device is not defined and device_id is defined %}
+  {%- set device = dcim.Device.objects.get(pk=device_id) %}
+{%- endif %}
 {#- #}
 {%- set description_slugifier = {
   'lowercase': False,
@@ -20,38 +20,38 @@
 {#- #}
 {#- Prepare interface list #}
 {%- for intf in device.interfaces.all() %}
-{#- #}
-{#- Tunnel prep #}
-{%- set tunnel_term = intf.tunnel_terminations.first() %}
-{%- if tunnel_term %}
-{%- set tunnel_remote = tunnel_term.tunnel.terminations.exclude(termination_id=intf.id).first() %}
-{%- endif %}
-{#- #}
-{#- Analyse tags #}
-{%- for tag in intf.tags.all() %}
-{%- if tag.name == 'protocol:rip' %}{{ rip_interfaces.append(intf.name) or "" }}{% endif %}
-{%- if tag.name == 'protocol:ripng' %}{{ ripng_interfaces.append(intf.name) or "" }}{% endif %}
-{%- endfor %}
-{#- #}
-{#- Determine interface type #}
-{%- if intf.name == "lo" %}
-{#- Loopback #}
-{%- set if_entry = { 'intf': intf, 'conftype': "loopback", 'confpath': intf.name } %}
-{#- #}
-{%- elif tunnel_term and tunnel_remote %}
-{#- Tunnel #}
-{%- set if_entry = { 'intf': intf, 'conftype': "tunnel", 'confpath': intf.name, 'term': tunnel_term, 'remote': tunnel_remote } %}
-{#- #}
-{%- elif intf.type not in ["virtual", "other", "bridge", "lag"] %}
-{#- Ethernet #}
-{#- Add VLANs #}
-{%- for vlan in device.interfaces.filter(parent=intf,type='virtual',mode='access',untagged_vlan__isnull=False).all() %}
-{{- interfaces.append({ 'intf': vlan, 'conftype': "ethernet", 'confpath': '%s vif %d' % (intf.name,vlan.untagged_vlan.vid) }) or "" }}
-{%- endfor %}
-{%- set if_entry = { 'intf': intf, 'conftype': "ethernet", 'confpath': intf.name } %}
-{#- #}
-{%- endif %}{# /interface type #}
-{%- if if_entry %}{{- interfaces.append(if_entry) or "" }}{% endif %}
+  {#- #}
+  {#- Tunnel prep #}
+  {%- set tunnel_term = intf.tunnel_terminations.first() %}
+  {%- if tunnel_term %}
+    {%- set tunnel_remote = tunnel_term.tunnel.terminations.exclude(termination_id=intf.id).first() %}
+  {%- endif %}
+  {#- #}
+  {#- Analyse tags #}
+  {%- for tag in intf.tags.all() %}
+    {%- if tag.name == 'protocol:rip' %}{{ rip_interfaces.append(intf.name) or "" }}{% endif %}
+    {%- if tag.name == 'protocol:ripng' %}{{ ripng_interfaces.append(intf.name) or "" }}{% endif %}
+  {%- endfor %}
+  {#- #}
+  {#- Determine interface type #}
+  {%- if intf.name == "lo" %}
+    {#- Loopback #}
+    {%- set if_entry = { 'intf': intf, 'conftype': "loopback", 'confpath': intf.name } %}
+    {#- #}
+  {%- elif tunnel_term and tunnel_remote %}
+    {#- Tunnel #}
+    {%- set if_entry = { 'intf': intf, 'conftype': "tunnel", 'confpath': intf.name, 'term': tunnel_term, 'remote': tunnel_remote } %}
+    {#- #}
+  {%- elif intf.type not in ["virtual", "other", "bridge", "lag"] %}
+    {#- Ethernet #}
+    {#- Add VLANs #}
+    {%- for vlan in device.interfaces.filter(parent=intf,type='virtual',mode='access',untagged_vlan__isnull=False).all() %}
+      {{- interfaces.append({ 'intf': vlan, 'conftype': "ethernet", 'confpath': '%s vif %d' % (intf.name,vlan.untagged_vlan.vid) }) or "" }}
+    {%- endfor %}
+    {%- set if_entry = { 'intf': intf, 'conftype': "ethernet", 'confpath': intf.name } %}
+  {#- #}
+  {%- endif %}{# /interface type #}
+  {%- if if_entry %}{{- interfaces.append(if_entry) or "" }}{% endif %}
 {%- endfor %}{# /interface prep #}
 {#- #}
 {#- Loop over interfaces #}
