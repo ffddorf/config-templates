@@ -6,7 +6,7 @@ locals {
 
   template_assingments = {
     for filename, template in local.templates :
-    filename => regex("{# ?assignment: ?platform=([^ #]+) ?#}", template)[0]
+    filename => regex("{#-? ?assignment: ?platform=([^ #]+) ?#}", template)[0]
   }
 }
 
