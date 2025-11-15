@@ -9,10 +9,8 @@
 {% endif %}
 
 {%- set description_slugifier = {
-  'lower': False,
-  'spaces': True,
-  'only_ascii': True,
-  'extra_chars': '()._',
+  'lowercase': False,
+  'regex_pattern': '[^-a-zA-Z0-9()._ ]+',
 } %}
 
 {%- set rip_interfaces = [] %}
