@@ -12,13 +12,20 @@
   'lowercase': False,
   'regex_pattern': '[^-a-zA-Z0-9()._ ]+',
 } %}
-{#- #}
-{%- set rip_interfaces = [] %}
-{%- set ripng_interfaces = [] %}
 
 # Interfaces
+{%- set rip_interfaces = [] %}
+{%- set ripng_interfaces = [] %}
+{%- set interfaces = [] %}
+{#- #}
+{#- Prepare interface list #}
 {%- for intf in device.interfaces.all() %}
-{%- set ifpath = intf.name %}
+{#- #}
+{#- Tunnel prep #}
+{%- set tunnel_term = intf.tunnel_terminations.first() %}
+{%- if tunnel_term %}
+{%- set tunnel_remote = tunnel_term.tunnel.terminations.exclude(termination_id=intf.id).first() %}
+{%- endif %}
 {#- #}
 {#- Analyse tags #}
 {%- for tag in intf.tags.all() %}
@@ -26,63 +33,76 @@
 {%- if tag.name == 'protocol:ripng' %}{{ ripng_interfaces.append(intf.name) or "" }}{% endif %}
 {%- endfor %}
 {#- #}
+{#- Determine interface type #}
+{%- if intf.name == "lo" %}
 {#- Loopback #}
-{%- if intf.name == "lo" %}{% set iftype = "loopback" %}{% endif %}
+{%- set if_entry = { 'intf': intf, 'conftype': "loopback", 'confpath': intf.name } %}
 {#- #}
+{%- elif tunnel_term and tunnel_remote %}
+{#- Tunnel #}
+{%- set if_entry = { 'intf': intf, 'conftype': "tunnel", 'confpath': intf.name, 'term': tunnel_term, 'remote': tunnel_remote } %}
+{#- #}
+{%- elif intf.type not in ["virtual", "other", "bridge", "lag"] %}
 {#- Ethernet #}
-{%- if intf.type not in ["virtual", "other", "bridge", "lag"] %}
-{%- set iftype = "ethernet" %}
-{%- endif %}
+{#- Add VLANs #}
+{%- for vlan in device.interfaces.filter(parent=intf,type='virtual',mode='access',untagged_vlan__isnull=False).all() %}
+{{- interfaces.append({ 'intf': vlan, 'conftype': "ethernet", 'confpath': '%s vif %d' % (intf.name,vlan.untagged_vlan.vid) }) or "" }}
+{%- endfor %}
+{%- set if_entry = { 'intf': intf, 'conftype': "ethernet", 'confpath': intf.name } %}
 {#- #}
-{#- VLANs #}
-{%- if intf.type == 'virtual' and intf.parent and intf.mode == 'access' and intf.untagged_vlan is not none %}
-{%- if intf.parent.type not in ["virtual", "other", "bridge", "lag"] %}{% set iftype = "ethernet" %}{% endif %}
-{#- TODO: add other iftypes #}
-{%- set ifpath = "%s vif %d" % (intf.parent.name, intf.untagged_vlan.vid) %}
-{%- endif %}
+{%- endif %}{# /interface type #}
+{%- if if_entry %}{{- interfaces.append(if_entry) or "" }}{% endif %}
+{%- endfor %}{# /interface prep #}
 {#- #}
-{#- Tunnels #}
-{%- set term = intf.tunnel_terminations.first() %}
-{%- if term %}
-{%- set remote = term.tunnel.terminations.exclude(termination_id=intf.id).first() %}
-{%- if remote %}
-{#- #}
-{%- set iftype = "tunnel" %}
-set interfaces tunnel {{ intf.name }} encapsulation {{ term.tunnel.encapsulation }}
-set interfaces tunnel {{ intf.name }} multicast disable
-set interfaces tunnel {{ intf.name }} local-ip {{ term.outside_ip.address.ip }}
-{#- #}
-{%- with remote_ip = ipam.IPAddress.objects.filter(nat_inside_id=remote.outside_ip.id).first() or remote.outside_ip %}
-set interfaces tunnel {{ intf.name }} remote-ip {{ remote_ip.address.ip }}
-{%- endwith %}
-
-{%- endif %}
-{%- endif %}
-
-{#- Generic interface config #}
-{%- if iftype %}
-{#- #}
-{%- if not intf.enabled %}
-set interfaces {{ iftype }} {{ ifpath }} disable
-{%- endif %}
-{#- #}
-{%- if intf.description != '' %}
-set interfaces {{ iftype }} {{ ifpath }} description "{{ intf.description | slugify(**description_slugifier) }}"
-{%- endif %}
-{#- #}
+{#- Loop over interfaces #}
+{%- for entry in interfaces | sort(attribute='conftype,confpath') %}
+{%- set intf = entry.intf %}
+{%- set iftype = entry.conftype %}
+{%- set ifpath = entry.confpath %}
+{#- Generic #}
 {%- for addr in intf.ip_addresses.all() %}
 {%- if addr.status == 'dhcp' %}
 set interfaces {{ iftype }} {{ ifpath }} address dhcp
 {%- elif addr.status == 'slaac' %}
-set interfaces {{ iftype }} {{ ifpath }} ipv6 address autoconf
+{%- set ipv6_autoconf = True %}
 {%- else %}
 set interfaces {{ iftype }} {{ ifpath }} address {{ addr.address }}
 {%- endif %}
 {%- endfor %}{# /Addresses #}
 {#- #}
+{%- if intf.description != '' %}
+set interfaces {{ iftype }} {{ ifpath }} description "{{ intf.description | slugify(**description_slugifier) }}"
+{%- endif %}
+{#- #}
+{%- if not intf.enabled %}
+set interfaces {{ iftype }} {{ ifpath }} disable
+{%- endif %}
+{%- if intf.type not in ['virtual', 'other'] %}
 set interfaces {{ iftype }} {{ ifpath }} duplex {{ intf.duplex | default("auto", true) }}
+{%- endif %}
+{#- #}
+{%- if iftype == 'tunnel' %}
+set interfaces {{ iftype }} {{ ifpath }} encapsulation {{ entry.term.tunnel.encapsulation }}
+{%- endif %}
+{#- #}
+{#- IPv6 #}
+{%- if ipv6_autoconf %}
+set interfaces {{ iftype }} {{ ifpath }} ipv6 address autoconf
+{%- endif %}
+{#- #}
+{%- if iftype == 'tunnel' %}
+set interfaces {{ iftype }} {{ ifpath }} multicast disable
+set interfaces {{ iftype }} {{ ifpath }} local-ip {{ entry.term.outside_ip.address.ip }}
+{#- #}
+{%- with remote_ip = ipam.IPAddress.objects.filter(nat_inside_id=entry.remote.outside_ip.id).first() or entry.remote.outside_ip %}
+set interfaces {{ iftype }} {{ ifpath }} remote-ip {{ remote_ip.address.ip }}
+{%- endwith %}
+{%- endif %}{# /Tunnel #}
+{#- #}
+{%- if intf.type not in ['virtual', 'other'] %}
 set interfaces {{ iftype }} {{ ifpath }} speed {% if intf.speed %}{{ (intf.speed / 1000) | int }}{% else %}auto{% endif %}
-{%- endif %}{# /Generic #}
+{%- endif %}
+{#- #}
 {%- endfor %}{# /Interfaces #}
 
 # Static interface routes
