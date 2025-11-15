@@ -115,15 +115,17 @@ set protocols static interface-route {{ pfx.prefix }} next-hop-interface {{ intf
 {%- endif %}
 {%- endfor %}
 {%- endfor %}
-
-{%- set prefix_list_used = [] %}
 {#- #}
+{%- set prefix_list_used = [] %}
+
 # BGP sessions
+delete protocols bgp
 {%- for sess in netbox_bgp.BGPSession.objects.filter(device_id=device.id) %}
 {#- #}
-{%- set neighbor = sess.remote_address.address.ip %}
-{%- set asn = sess.local_as.asn %}
 {%- set is_v6 = sess.local_address.address.ip.version == 6 %}
+{%- set neighbor = sess.remote_address.address.ip %}
+{%- if is_v6 %}{% set neighbor = "'%s'" % neighbor %}{% endif %}
+{%- set asn = sess.local_as.asn %}
 {%- if sess.description != '' %}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} description {{ sess.description | slugify(**description_slugifier) }}
 {%- endif %}
@@ -165,6 +167,7 @@ set protocols bgp {{ asn }} neighbor {{ neighbor }} prefix-list export {{ sess.p
 {%- endfor %}
 
 # RIP
+delete protocols rip
 {%- for intf in rip_interfaces %}
 set protocols rip interface {{ intf }}
 {%- endfor %}
