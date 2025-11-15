@@ -57,7 +57,7 @@
   {%- elif intf.type not in ["virtual", "other", "bridge", "lag"] %}
     {#- Ethernet #}
     {#- Add VLANs #}
-    {%- for vlan in device.interfaces.filter(parent=intf,type='virtual',mode='access',untagged_vlan__isnull=False).all() %}
+    {%- for vlan in device.interfaces.filter(parent=intf,type='virtual',mode='access',untagged_vlan__isnull=False) %}
       {{- interfaces.append({
         'intf': vlan,
         'conftype': "ethernet",
