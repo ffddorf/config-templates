@@ -149,7 +149,7 @@ delete protocols bgp
 {%- if is_v6 %}{% set neighbor = "'%s'" % neighbor %}{% endif %}
 {%- set asn = sess.local_as.asn %}
 {%- if sess.description != '' %}
-set protocols bgp {{ asn }} neighbor {{ neighbor }} description {{ sess.description | slugify(**description_slugifier) }}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} description "{{ sess.description | slugify(**description_slugifier) }}"
 {%- endif %}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} remote-as {{ sess.remote_as.asn }}
 {#- #}
