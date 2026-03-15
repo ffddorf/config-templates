@@ -170,7 +170,7 @@ set protocols bgp {{ asn }} neighbor {{ neighbor }} address-family ipv6-unicast 
 {%- endif %}
 {%- if sess.prefix_list_out %}
 {{- prefix_list_used.append(sess.prefix_list_out) or "" }}
-set protocols bgp {{ asn }} neighbor {{ neighbor }} address-family ipv6-unicast prefix-list export {{ sess.prefix_list_in.name }}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} address-family ipv6-unicast prefix-list export {{ sess.prefix_list_out.name }}
 {%- endif %}
 {#- #}
 {%- else %}{# is_v6 #}
