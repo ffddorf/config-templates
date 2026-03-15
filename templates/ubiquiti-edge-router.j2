@@ -138,7 +138,8 @@ set protocols static interface-route {{ pfx.prefix }} next-hop-interface {{ intf
 {%- endfor %}
 {%- endfor %}
 {#- #}
-{%- set prefix_list_used = [] %}
+{%- set prefix_list_used_v4 = [] %}
+{%- set prefix_list_used_v6 = [] %}
 
 # BGP sessions
 delete protocols bgp
@@ -165,22 +166,22 @@ set protocols bgp {{ asn }} neighbor {{ neighbor }} address-family ipv6-unicast 
 {%- endif %}
 {#- #}
 {%- if sess.prefix_list_in %}
-{{- prefix_list_used.append(sess.prefix_list_in) or "" }}
+{{- prefix_list_used_v6.append(sess.prefix_list_in) or "" }}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} address-family ipv6-unicast prefix-list import {{ sess.prefix_list_in.name }}
 {%- endif %}
 {%- if sess.prefix_list_out %}
-{{- prefix_list_used.append(sess.prefix_list_out) or "" }}
-set protocols bgp {{ asn }} neighbor {{ neighbor }} address-family ipv6-unicast prefix-list export {{ sess.prefix_list_in.name }}
+{{- prefix_list_used_v6.append(sess.prefix_list_out) or "" }}
+set protocols bgp {{ asn }} neighbor {{ neighbor }} address-family ipv6-unicast prefix-list export {{ sess.prefix_list_out.name }}
 {%- endif %}
 {#- #}
 {%- else %}{# is_v6 #}
 {#- #}
 {%- if sess.prefix_list_in %}
-{{- prefix_list_used.append(sess.prefix_list_in) or "" }}
+{{- prefix_list_used_v4.append(sess.prefix_list_in) or "" }}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} prefix-list import {{ sess.prefix_list_in.name }}
 {%- endif %}
 {%- if sess.prefix_list_out %}
-{{- prefix_list_used.append(sess.prefix_list_out) or "" }}
+{{- prefix_list_used_v4.append(sess.prefix_list_out) or "" }}
 set protocols bgp {{ asn }} neighbor {{ neighbor }} prefix-list export {{ sess.prefix_list_out.name }}
 {%- endif %}
 {#- #}
@@ -198,7 +199,8 @@ set protocols ripng interface {{ intf }}
 {%- endfor %}
 
 # Policy
-{%- for pfxlist in prefix_list_used | unique %}
+{%- for pfxlist_group in [prefix_list_used_v4, prefix_list_used_v6] %}
+{%- for pfxlist in pfxlist_group | unique | sort(attribute='name') %}
 {%- set policytype = 'prefix-list6' if pfxlist.family == 'ipv6' else 'prefix-list' %}
 {%- if pfxlist.description != '' %}
 set policy {{ policytype }} {{ pfxlist.name }} description "{{ pfxlist.description | slugify(**description_slugifier) }}"
@@ -215,5 +217,6 @@ set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} ge {{ rule.
 {%- if rule.le is not none %}
 set policy {{ policytype }} {{ pfxlist.name }} rule {{ rule.index }} ge {{ rule.le }}
 {%- endif %}
+{%- endfor %}
 {%- endfor %}
 {%- endfor %}
