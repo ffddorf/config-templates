@@ -132,7 +132,7 @@ delete protocols static interface-route
 {%- for intf in device.interfaces.filter(untagged_vlan__isnull=False) %}
 {%- for pfx in ipam.Prefix.objects.filter(vlan_id=intf.untagged_vlan_id) %}
 {%- if pfx.custom_field_data.get('use_interface_route', False) %}
-{%- set routetype = 'interface-route6' if pfx.family == 'ipv6' else 'interface-route' %}
+{%- set routetype = 'interface-route6' if pfx.family == 6 else 'interface-route' %}
 set protocols static {{ routetype }} {{ pfx.prefix }} next-hop-interface {{ intf.name }}
 {%- if pfx.description %} description "{{ pfx.description | slugify(**description_slugifier) }}"{% endif %}
 {%- endif %}
